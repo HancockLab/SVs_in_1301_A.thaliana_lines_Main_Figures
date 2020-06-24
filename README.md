@@ -129,19 +129,19 @@ fig_label("D",pos="topleft", cex=2, col="black", font=2)
 ## Figure 5
 ```
 
-setwd("/Volumes/CVI/final/svs_mehmet/balSelStats")
+setwd("./balSelStats")
 tajDFiles=list.files("./", pattern="*_balSelStats_2020_compareDefenseToGenic.txt")
 names=sapply(strsplit(sapply(strsplit(tajDFiles, "_"), "[[", 1), "Ids"), "[[", 1)
 
-pdf("./balSelStats_tajD_02.pdf", height=5, width=8)
+pdf("./balSelStats_tajD_03.pdf", height=5, width=8)
 par(mfrow=c(1, 1), mar=c(6,5,2,4))
+
 
 writeFile="summary_tajD-sv_2020-06-29.txt"
 
 write("Organising tajD results", file=writeFile)
 write.table(data.frame("pop", "defense_tajD", "genic_tajD", "intergenic_tajD", "pval"), 
             file=writeFile, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
-
 
 plot(y=0, x=0, ylim=c(-1.2, +1.2), bg = col, col="black", type="n", lwd=0.3, cex=2, axes=F, ylab=list(expression("Tajima's D"), cex=1.5), xlab=list(expression(""), cex=1.5), xlim=c(0.0, length(names)*5))
 abline(h=0.0)
@@ -171,26 +171,25 @@ for (ff in 1:length(tajDFiles)) {
   exes = 0
   exes = exes + 2.5
   
-  IDFile <- tajDFiles[[f]]
-  IDFileStr <- strsplit(readLines(IDFile), "\t")
+  tajDFile <- tajDFiles[[f]]
+  tajDFileStr <- strsplit(readLines(tajDFile), "\t")
   # close(IDFile)
   
   ##    Find enrichment[]
   #     For [2]: all, [3]: intergenic, [4]: genic, [5]: defense
   ###
-  for (l in 1:length(IDFileStr)) {
-    if (IDFileStr[[l]][1] == "TajD") {
-      enrich_genic = as.double(IDFileStr[[l]][[2]])
-      enrich_defense = as.double(IDFileStr[[l]][[3]])
-      enrich_interg = as.double(IDFileStr[[l]][[4]])
-      # print(IDFileStr[[l]])
+  for (l in 1:length(tajDFileStr)) {
+    if (tajDFileStr[[l]][1] == "TajD") {
+      enrich_genic = as.double(tajDFileStr[[l]][[2]])
+      enrich_defense = as.double(tajDFileStr[[l]][[3]])
+      enrich_interg = as.double(tajDFileStr[[l]][[4]])
     }
   }
   
   
   ## Distribution bootstrap
   #
-  boot = as.double(IDFileStr[[8]])
+  boot = as.double(tajDFileStr[[8]])
   
   jit=30
   xxs=bigX + exes +0.04 - jit + jitter(rep(jit, length(na.omit(boot))))
@@ -217,6 +216,9 @@ for (ff in 1:length(tajDFiles)) {
 }
 
 dev.off()
+
+
+
 
 
 ```
