@@ -44,26 +44,293 @@ legend("topleft", col = c("#D52EED","#763CFF","#8F30FE","#FFFF00","#67029E","#51
 ```
 ## Figure 4
 ```
-dat <- data.frame(Type = c("WholeGenome","Intergenic","Genic"), NumberOfDeletions = c(124905,87627,37278),Proportions = c(0.3,0.52,0.14))
+fig_label <- function(text, region="figure", pos="topleft", cex=NULL, ...) {
+ 
+  region <- match.arg(region, c("figure", "plot", "device"))
+  pos <- match.arg(pos, c("topleft", "top", "topright", 
+                          "left", "center", "right", 
+                          "bottomleft", "bottom", "bottomright"))
+ 
+  if(region %in% c("figure", "device")) {
+    ds <- dev.size("in")
+    # xy coordinates of device corners in user coordinates
+    x <- grconvertX(c(0, ds[1]), from="in", to="user")
+    y <- grconvertY(c(0, ds[2]), from="in", to="user")
+ 
+    # fragment of the device we use to plot
+    if(region == "figure") {
+      # account for the fragment of the device that 
+      # the figure is using
+      fig <- par("fig")
+      dx <- (x[2] - x[1])
+      dy <- (y[2] - y[1])
+      x <- x[1] + dx * fig[1:2]
+      y <- y[1] + dy * fig[3:4]
+    } 
+  }
+ 
+  # much simpler if in plotting region
+  if(region == "plot") {
+    u <- par("usr")
+    x <- u[1:2]
+    y <- u[3:4]
+  }
+ 
+  sw <- strwidth(text, cex=cex) * 60/100
+  sh <- strheight(text, cex=cex) * 60/100
+ 
+  x1 <- switch(pos,
+    topleft     =x[1] + sw, 
+    left        =x[1] + sw,
+    bottomleft  =x[1] + sw,
+    top         =(x[1] + x[2])/2,
+    center      =(x[1] + x[2])/2,
+    bottom      =(x[1] + x[2])/2,
+    topright    =x[2] - sw,
+    right       =x[2] - sw,
+    bottomright =x[2] - sw)
+ 
+  y1 <- switch(pos,
+    topleft     =y[2] - sh,
+    top         =y[2] - sh,
+    topright    =y[2] - sh,
+    left        =(y[1] + y[2])/2,
+    center      =(y[1] + y[2])/2,
+    right       =(y[1] + y[2])/2,
+    bottomleft  =y[1] + sh,
+    bottom      =y[1] + sh,
+    bottomright =y[1] + sh)
+ 
+  old.par <- par(xpd=NA)
+  on.exit(par(old.par))
+ 
+  text(x1, y1, text, cex=cex, ...)
+  return(invisible(c(x,y)))
+}
 
-par(mfrow=c(1,2), mar=c(5, 5, 5, 5))
 
-barplot(dat$NumberOfDeletions, main="Number of Deletions", xlab="Deletion Type", ylab="Counts", ylim=c(0,140000),names.arg = c("Whole Genome", "Intergenic", "Genic"),cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=1.5)
+par(mfrow=c(2,2), mar=c(5, 5, 5, 5))
+sma<-read.table("sma_file", header=TRUE, row.names=1)
+barplot(t(as.matrix(sma)), beside=TRUE, col=c("black", "blue", "yellow","red"), main="", xlab="",ylim=c(0,0.4), ylab="Proportion",cex.lab=2, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=2)
+fig_label("A", pos="topleft", cex=2, col="black", font=2)
 
-barplot(dat$Proportions, main="Proportion of Deletions", xlab="Proportion", ylab="Deletion Type",names.arg = c("Whole Genome", "Intergenic", "Genic"),horiz=TRUE,space = c(0.5, 0),cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=1.5,xlim=c(0,0.6))
+ir<-read.table("ir_file", header=TRUE, row.names=1)
+barplot(t(as.matrix(ir)), beside=TRUE, col=c("black", "blue", "yellow","red"), main="", xlab="",ylim=c(0,0.4), ylab="Proportion",cex.lab=2, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=2)
+fig_label("B",pos="topleft", cex=2, col="black", font=2)
+
+popn<-read.table("popn_file", header=TRUE, row.names=1)
+barplot(t(as.matrix(popn)), beside=TRUE, col=c("black", "blue", "yellow","red"), main="", xlab="",ylim=c(0,0.4), ylab="Proportion",cex.lab=2, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=2)
+fig_label("C",pos="topleft", cex=2, col="black", font=2)
+
+nswe<-read.table("nswe_file", header=TRUE, row.names=1)
+barplot(t(as.matrix(nswe)), beside=TRUE, col=c("black", "blue", "yellow","red"), main="", xlab="",ylim=c(0,0.4), ylab="Proportion",cex.lab=2, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=2)
+fig_label("D",pos="topleft", cex=2, col="black", font=2)
 ```
 ## Figure 5
 ```
+manhattan1<-function (x, chr = "CHR", bp = "BP", p = "P", snp = "SNP", col = c("deepskyblue",
+                                                                               "lightskyblue2"), chrlabs = NULL, suggestiveline = -log10(1e-05),
+                      genomewideline = -log10(5e-08), highlight1 = NULL, highlight2 = NULL, logp = TRUE,
+                      ...)
+{
+  CHR = BP = P = index = NULL
+  if (!(chr %in% names(x)))
+    stop(paste("Column", chr, "not found!"))
+  if (!(bp %in% names(x)))
+    stop(paste("Column", bp, "not found!"))
+  if (!(p %in% names(x)))
+    stop(paste("Column", p, "not found!"))
+  if (!(snp %in% names(x)))
+    warning(paste("No SNP column found. OK unless you're trying to highlight."))
+  if (!is.numeric(x[[chr]]))
+    stop(paste(chr, "column should be numeric. Do you have 'X', 'Y', 'MT', etc? If so change to numbers and try again."))
+  if (!is.numeric(x[[bp]]))
+
+    stop(paste(bp, "column should be numeric."))
+  if (!is.numeric(x[[p]]))
+    stop(paste(p, "column should be numeric."))
+  d = data.frame(CHR = x[[chr]], BP = x[[bp]], P = x[[p]])
+  if (!is.null(x[[snp]]))
+    d = transform(d, SNP = x[[snp]])
+  d <- subset(d, (is.numeric(CHR) & is.numeric(BP) & is.numeric(P)))
+  d <- d[order(d$CHR, d$BP), ]
+  if (logp) {
+    d$logp <- -log10(d$P)
+  }
+  else {
+    d$logp <- d$P
+  }
+  d$pos = NA
+  d$index = NA
+  ind = 0
+  for (i in unique(d$CHR)) {
+    ind = ind + 1
+    d[d$CHR == i, ]$index = ind
+  }
+  nchr = length(unique(d$CHR))
+  if (nchr == 1) {
+    options(scipen = 999)
+    d$pos = d$BP/1e+06
+    ticks = floor(length(d$pos))/2 + 1
+    xlabel = paste("Chromosome", unique(d$CHR), "position(Mb)")
+    labs = ticks
+  }
+  else {
+    lastbase = 0
+    ticks = NULL
+    for (i in unique(d$index)) {
+      if (i == 1) {
+        d[d$index == i, ]$pos = d[d$index == i, ]$BP
+      }
+      else {
+        lastbase = lastbase + tail(subset(d, index ==
+                                            i - 1)$BP, 1)
+        d[d$index == i, ]$pos = d[d$index == i, ]$BP +
+          lastbase
+      }
+      ticks = c(ticks, (min(d[d$CHR == i, ]$pos) + max(d[d$CHR ==
+                                                           i, ]$pos))/2 + 1)
+    }
+    xlabel = "Chromosome"
+    labs <- unique(d$CHR)
+  }
+  xmax = ceiling(max(d$pos) * 1.03)
+  xmin = floor(max(d$pos) * -0.03)
+  def_args <- list(xaxt = "n", bty = "n", xaxs = "i", yaxs = "i",
+                   las = 1, pch = 20, xlim = c(xmin, xmax), ylim = c(0,
+                                                                     ceiling(max(d$logp))), xlab = xlabel, ylab = expression(-log[10](p)))
+  dotargs <- list(...)
+  do.call("plot", c(NA, dotargs, def_args[!names(def_args) %in%
+                                            names(dotargs)]))
+  if (!is.null(chrlabs)) {
+    if (is.character(chrlabs)) {
+      if (length(chrlabs) == length(labs)) {
+        labs <- chrlabs
+      }
+      else {
+        warning("You're trying to specify chromosome labels but the number of labels != number of chromosomes.")
+      }
+    }
+    else {
+      warning("If you're trying to specify chromosome labels, chrlabs must be a character vector")
+    }
+  }
+  if (nchr == 1) {
+    axis(1, ...)
+  }
+  else {
+    axis(1, at = ticks, labels = labs, ...)
+  }
+  col = rep(col, max(d$CHR))
+  if (nchr == 1) {
+    with(d, points(pos, logp, pch = 20, col = col[1], ...))
+  }
+  else {
+    icol = 1
+    for (i in unique(d$index)) {
+      with(d[d$index == unique(d$index)[i], ], points(pos,
+                                                      logp, col = col[icol], pch = 20, ...))
+      icol = icol + 1
+    }
+  }
+  if (suggestiveline)
+    abline(h = suggestiveline, col = "dodgerblue")
+  if (genomewideline)
+    abline(h = genomewideline, col = "red")
+  if (!is.null(highlight1)) {
+    if (any(!(highlight1 %in% d$SNP)))
+      warning("You're trying to highlight1 SNPs that don't exist in your results.")
+    d.highlight1 = d[which(d$SNP %in% highlight1), ]
+    with(d.highlight1, points(pos, logp, col = "dodgerblue", pch = 20,
+                              ...))
+  }
+  if (!is.null(highlight2)) {
+    if (any(!(highlight2 %in% d$SNP)))
+      warning("You're trying to highlight2 SNPs that don't exist in your results.")
+    d.highlight2 = d[which(d$SNP %in% highlight2), ]
+    with(d.highlight2, points(pos, logp, col = "red", pch = 19,
+                              ...))
+  }
+}
+
+fig_label <- function(text, region="figure", pos="topleft", cex=NULL, ...) {
+ 
+  region <- match.arg(region, c("figure", "plot", "device"))
+  pos <- match.arg(pos, c("topleft", "top", "topright", 
+                          "left", "center", "right", 
+                          "bottomleft", "bottom", "bottomright"))
+ 
+  if(region %in% c("figure", "device")) {
+    ds <- dev.size("in")
+    # xy coordinates of device corners in user coordinates
+    x <- grconvertX(c(0, ds[1]), from="in", to="user")
+    y <- grconvertY(c(0, ds[2]), from="in", to="user")
+ 
+    # fragment of the device we use to plot
+    if(region == "figure") {
+      # account for the fragment of the device that 
+      # the figure is using
+      fig <- par("fig")
+      dx <- (x[2] - x[1])
+      dy <- (y[2] - y[1])
+      x <- x[1] + dx * fig[1:2]
+      y <- y[1] + dy * fig[3:4]
+    } 
+  }
+ 
+  # much simpler if in plotting region
+  if(region == "plot") {
+    u <- par("usr")
+    x <- u[1:2]
+    y <- u[3:4]
+  }
+ 
+  sw <- strwidth(text, cex=cex) * 60/100
+  sh <- strheight(text, cex=cex) * 60/100
+ 
+  x1 <- switch(pos,
+    topleft     =x[1] + sw, 
+    left        =x[1] + sw,
+    bottomleft  =x[1] + sw,
+    top         =(x[1] + x[2])/2,
+    center      =(x[1] + x[2])/2,
+    bottom      =(x[1] + x[2])/2,
+    topright    =x[2] - sw,
+    right       =x[2] - sw,
+    bottomright =x[2] - sw)
+ 
+  y1 <- switch(pos,
+    topleft     =y[2] - sh,
+    top         =y[2] - sh,
+    topright    =y[2] - sh,
+    left        =(y[1] + y[2])/2,
+    center      =(y[1] + y[2])/2,
+    right       =(y[1] + y[2])/2,
+    bottomleft  =y[1] + sh,
+    bottom      =y[1] + sh,
+    bottomright =y[1] + sh)
+ 
+  old.par <- par(xpd=NA)
+  on.exit(par(old.par))
+ 
+  text(x1, y1, text, cex=cex, ...)
+  return(invisible(c(x,y)))
+}
 par(mfrow=c(2,2), mar=c(5, 5, 5, 5))
-asia<-read.table("file", header=TRUE, row.names=1)
-ce<-read.table("file", header=TRUE, row.names=1)
-ha<-read.table("file", header=TRUE, row.names=1)
-ir<-read.table("file", header=TRUE, row.names=1)
+flower=read.table("gemma_assoc_file", header = T)
+manhattan1(flower, chr = "chr", bp="ps", p="p_lrt", snp = "rs", genomewideline = -log10(0.05), suggestiveline = -log10(0.05/length(flower$rs)), ylim=c(0,9), main='', cex.main=0.8)
+fig_label("A", pos="topleft", cex=2, col="black", font=2)
 
+flower=read.table("gemma_assoc_file", header = T)
+manhattan1(flower, chr = "chr", bp="ps", p="p_lrt", snp = "rs", genomewideline = -log10(0.05), suggestiveline = -log10(0.05/length(flower$rs)), ylim=c(0,9), main='', cex.main=0.8)
+fig_label("B", pos="topleft", cex=2, col="black", font=2)
 
-barplot(t(as.matrix(asia)), beside=TRUE, col=c("black", "blue", "yellow","red"), main="Asia", xlab="Allele Frequency",ylim=c(0,0.4), ylab="Proportion",cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=1.5)
-legend("topright", col = c("black","blue","yellow","red"),legend=c("Whole Genome","Intergenic","Genic","Defense"),  pch=c(15,15,15,15), cex=1.5)
-barplot(t(as.matrix(ir)), beside=TRUE, col=c("black", "blue", "yellow","red"), main="Iberian Relicts", xlab="Allele Frequency",ylim=c(0,0.4), ylab="Proportion",cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=1.5)
-barplot(t(as.matrix(ce)), beside=TRUE, col=c("black", "blue", "yellow","red"), main="Central Europe", xlab="Allele Frequency",ylim=c(0,0.4), ylab="Proportion",cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=1.5)
-barplot(t(as.matrix(ha)), beside=TRUE, col=c("black", "blue", "yellow","red"), main="High Atlas", xlab="Allele Frequency",ylim=c(0,0.4), ylab="Proportion",cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=1.5)
+flower=read.table("gemma_assoc_file", header = T)
+manhattan1(flower, chr = "chr", bp="ps", p="p_lrt", snp = "rs", genomewideline = -log10(0.05), suggestiveline = -log10(0.05/length(flower$rs)), ylim=c(0,9), main='', cex.main=0.8)
+
+fig_label("C", pos="topleft", cex=2, col="black", font=2)
+
+flower=read.table("gemma_assoc_file", header = T)
+manhattan1(flower, chr = "chr", bp="ps", p="p_lrt", snp = "rs", genomewideline = -log10(0.05), suggestiveline = -log10(0.05/length(flower$rs)), ylim=c(0,9), main='', cex.main=0.8)
+fig_label("D", pos="topleft", cex=2, col="black", font=2)
 ```
