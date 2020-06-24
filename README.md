@@ -1,5 +1,3 @@
-## SVS_A.thaliana_II
-All scripts related with SVs Paper
 
 ## Figure 1
 ##### Requirements
