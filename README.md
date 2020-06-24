@@ -123,9 +123,106 @@ fig_label("C",pos="topleft", cex=2, col="black", font=2)
 nswe<-read.table("nswe_file", header=TRUE, row.names=1)
 barplot(t(as.matrix(nswe)), beside=TRUE, col=c("black", "blue", "yellow","red"), main="", xlab="",ylim=c(0,0.4), ylab="Proportion",cex.lab=2, cex.axis=1.5, cex.main=1.5, cex.sub=1.5,cex.names=2)
 fig_label("D",pos="topleft", cex=2, col="black", font=2)
+
+
 ```
 ## Figure 5
 ```
+
+setwd("/Volumes/CVI/final/svs_mehmet/balSelStats")
+tajDFiles=list.files("./", pattern="*_balSelStats_2020_compareDefenseToGenic.txt")
+names=sapply(strsplit(sapply(strsplit(tajDFiles, "_"), "[[", 1), "Ids"), "[[", 1)
+
+pdf("./balSelStats_tajD_02.pdf", height=5, width=8)
+par(mfrow=c(1, 1), mar=c(6,5,2,4))
+
+writeFile="summary_tajD-sv_2020-06-29.txt"
+
+write("Organising tajD results", file=writeFile)
+write.table(data.frame("pop", "defense_tajD", "genic_tajD", "intergenic_tajD", "pval"), 
+            file=writeFile, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+
+
+plot(y=0, x=0, ylim=c(-1.2, +1.2), bg = col, col="black", type="n", lwd=0.3, cex=2, axes=F, ylab=list(expression("Tajima's D"), cex=1.5), xlab=list(expression(""), cex=1.5), xlim=c(0.0, length(names)*5))
+abline(h=0.0)
+for (ver in 0:(5*length(names))) {
+  segments((ver*5), -1.2, (ver*5), 1.2, col = "black", lwd=0.1, lty = par("lty"), xpd = FALSE)
+}
+exes = 1
+bigX = 0
+axis(2, at=c(-1, 1), labels=c("-1", "1"), tick=TRUE, las=1, cex.axis=1.2)
+
+order_pop=c(
+  4, 14, 13, 9,           # Africa
+  8,                      # Madeira
+  6,                      # Relicts
+  5, 16, 2, 7, 3, 15, 10, # Europe
+  1, 11, 12               # Asia
+)
+axis(1, at=seq(0, length(names)*5, 5), labels=F, tick=TRUE, las=1, cex.axis=1.2)
+popNames=c("Asia", "CEur", "Ger", "Mor_HA", "INR", "IR", "IBC", "Madeira", "Mor_NMA", "NSw", "PopN", "PopY", "Mor_Rif", "Mor_SMA", "SSw", "WEur")
+           
+axis(1, at=seq(2.5, (length(names)*5)-2.5, 5), labels=popNames[order_pop], tick=F, las=2, cex.axis=0.8)
+
+
+for (ff in 1:length(tajDFiles)) {
+  f = order_pop[ff]
+  
+  exes = 0
+  exes = exes + 2.5
+  
+  IDFile <- tajDFiles[[f]]
+  IDFileStr <- strsplit(readLines(IDFile), "\t")
+  # close(IDFile)
+  
+  ##    Find enrichment[]
+  #     For [2]: all, [3]: intergenic, [4]: genic, [5]: defense
+  ###
+  for (l in 1:length(IDFileStr)) {
+    if (IDFileStr[[l]][1] == "TajD") {
+      enrich_genic = as.double(IDFileStr[[l]][[2]])
+      enrich_defense = as.double(IDFileStr[[l]][[3]])
+      enrich_interg = as.double(IDFileStr[[l]][[4]])
+      # print(IDFileStr[[l]])
+    }
+  }
+  
+  
+  ## Distribution bootstrap
+  #
+  boot = as.double(IDFileStr[[8]])
+  
+  jit=30
+  xxs=bigX + exes +0.04 - jit + jitter(rep(jit, length(na.omit(boot))))
+  
+  col=gray.colors(10, start = 0.6, end = 0.9, gamma = 2.2, 0.01)[[1]]
+  
+  points(x=xxs, y=na.omit(boot), bg=col, col=NULL, pch=22, cex=0.5)
+  
+  # Print categories
+  segments((bigX + exes + 0.04 - 0.6), enrich_defense, (bigX + exes + 0.04 +0.6), enrich_defense, col = "red", lwd=5, lty = par("lty"), xpd = FALSE)
+  segments((bigX + exes + 0.04 - 0.6), enrich_interg, (bigX + exes + 0.04 +0.6), enrich_interg, col = "blue3", lwd=5, lty = par("lty"), xpd = FALSE)
+  segments((bigX + exes + 0.04 - 0.6), enrich_genic, (bigX + exes + 0.04 +0.6), enrich_genic, col = "yellow", lwd=5, lty = par("lty"), xpd = FALSE)
+  
+  pval = ecdf(-boot)(c(-enrich_defense))
+  
+  bigX = bigX + 5
+  
+  ###
+  #   Write out to table
+  ###
+  write.table(data.frame(names[[f]], enrich_defense, enrich_genic, enrich_interg, pval), 
+              file=writeFile, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+  
+}
+
+dev.off()
+
+
+```
+## Figure 6
+```
+
 manhattan1<-function (x, chr = "CHR", bp = "BP", p = "P", snp = "SNP", col = c("deepskyblue",
                                                                                "lightskyblue2"), chrlabs = NULL, suggestiveline = -log10(1e-05),
                       genomewideline = -log10(5e-08), highlight1 = NULL, highlight2 = NULL, logp = TRUE,
